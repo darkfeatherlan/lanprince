@@ -1,0 +1,35 @@
+name: Fix mobile date inputs
+
+on:
+  push:
+    paths:
+      - '.github/workflows/fix-mobile-date.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Patch mobile form CSS
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p = Path('index.html')
+          s = p.read_text(encoding='utf-8')
+          old = '@media(max-width:560px){.wrap{width:calc(100% - 24px)}.heroBox,.panel{padding:16px}.facts,.counts,.checks,.today,.form-row{grid-template-columns:1fr}.visual{aspect-ratio:1/1}.gallery{width:100%;max-width:100%;overflow:hidden}.photo{width:100%;max-width:100%;min-height:0;aspect-ratio:4/3;border-radius:16px}.photo img{width:100%;height:100%;max-width:100%;object-fit:contain}}'
+          new = '@media(max-width:560px){.wrap{width:calc(100% - 24px)}.heroBox,.panel{padding:16px}.facts,.counts,.checks,.today,.form-row{grid-template-columns:1fr}.visual{aspect-ratio:1/1}.grid2,.form,.form-row,form{width:100%;max-width:100%;min-width:0}.form>*{min-width:0}input,textarea,select,input[type="date"]{display:block;width:100%;max-width:100%;min-width:0}input[type="date"]{-webkit-appearance:none;appearance:none;overflow:hidden}input[type="date"]::-webkit-date-and-time-value{text-align:left;min-width:0}.btn{width:100%}.toolbar .btn{width:auto}.gallery{width:100%;max-width:100%;overflow:hidden}.photo{width:100%;max-width:100%;min-height:0;aspect-ratio:4/3;border-radius:16px}.photo img{width:100%;height:100%;max-width:100%;object-fit:contain}}'
+          if old not in s:
+              raise SystemExit('Target CSS block not found')
+          p.write_text(s.replace(old, new), encoding='utf-8')
+          PY
+      - name: Commit fix
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add index.html
+          git diff --cached --quiet || git commit -m '修正手機版日期欄位超出版面'
+          git push
