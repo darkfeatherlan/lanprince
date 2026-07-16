@@ -70,3 +70,4 @@ restoreAdmin();
           git add index.html
           git diff --cached --quiet || git commit -m "新增網站管理模式"
           git push
+# trigger: 2026-07-16
