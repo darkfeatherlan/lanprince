@@ -4,27 +4,24 @@ import re
 p = Path('index.html')
 s = p.read_text(encoding='utf-8')
 
-# Remove the visible admin section.
-s = re.sub(
-    r'\s*<section id="admin">.*?</section>\s*',
-    '\n',
-    s,
-    count=1,
-    flags=re.S,
-)
+# 移除明顯的管理模式區塊
+s = re.sub(r'\s*<section id="admin">.*?</section>\s*', '\n', s, count=1, flags=re.S)
 
-# Keep protected forms hidden until admin mode is enabled.
+# 保持受保護表單預設隱藏
 s = s.replace('<form class="form" id="diaryForm">', '<form class="form admin-only" id="diaryForm">', 1)
 s = s.replace('<form class="form" id="recordForm">', '<form class="form admin-only" id="recordForm">', 1)
 
-# Use the existing diary button as a concealed long-press trigger.
+# 移除原本日記按鈕的隱藏入口 id，恢復一般連結
+s = s.replace('<a class="btn" id="diaryEntryBtn" href="#diary">寫今天的日記</a>', '<a class="btn" href="#diary">寫今天的日記</a>', 1)
+
+# 將預產期資訊設為秘密入口
 s = s.replace(
-    '<a class="btn" href="#diary">寫今天的日記</a>',
-    '<a class="btn" id="diaryEntryBtn" href="#diary">寫今天的日記</a>',
+    '<div class="fact"><strong>預產期</strong><small>2026 / 11 / 23</small></div>',
+    '<div class="fact" id="dueDateSecret"><strong>預產期</strong><small>2026 / 11 / 23</small></div>',
     1,
 )
 
-# Ensure protected requests include the stored password.
+# 確保受保護請求帶入密碼
 s = s.replace("{type:'diary',date:", "{type:'diary',password:getAdminPassword(),date:", 1)
 s = s.replace("{type:'record',date:", "{type:'record',password:getAdminPassword(),date:", 1)
 
@@ -46,20 +43,25 @@ function openHiddenAdmin(){
   setAdminMode(true);
   document.getElementById('diary').scrollIntoView({behavior:'smooth'});
 }
-const diaryEntryBtn=document.getElementById('diaryEntryBtn');
-let adminPressTimer=null;
-let adminLongPressed=false;
-function startAdminPress(e){adminLongPressed=false;clearTimeout(adminPressTimer);adminPressTimer=setTimeout(()=>{adminLongPressed=true;openHiddenAdmin()},1500)}
-function cancelAdminPress(){clearTimeout(adminPressTimer)}
-diaryEntryBtn.addEventListener('pointerdown',startAdminPress);
-diaryEntryBtn.addEventListener('pointerup',cancelAdminPress);
-diaryEntryBtn.addEventListener('pointerleave',cancelAdminPress);
-diaryEntryBtn.addEventListener('pointercancel',cancelAdminPress);
-diaryEntryBtn.addEventListener('click',e=>{if(adminLongPressed){e.preventDefault();adminLongPressed=false}});
+const dueDateSecret=document.getElementById('dueDateSecret');
+let dueTapCount=0;
+let dueTapTimer=null;
+if(dueDateSecret){
+  dueDateSecret.addEventListener('click',()=>{
+    dueTapCount+=1;
+    clearTimeout(dueTapTimer);
+    dueTapTimer=setTimeout(()=>{dueTapCount=0},2000);
+    if(dueTapCount>=7){
+      dueTapCount=0;
+      clearTimeout(dueTapTimer);
+      openHiddenAdmin();
+    }
+  });
+}
 restoreAdmin();
 '''
 
-# Replace the previous admin JavaScript block when present.
+# 取代既有管理模式 JavaScript
 s = re.sub(
     r"const ADMIN_KEY='lanPrinceAdminSessionV1';.*?restoreAdmin\(\);\s*",
     new_admin_js,
